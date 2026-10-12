@@ -1,0 +1,8 @@
+{% extends "base.html" %}{% block content %}
+<div class="grid"><div class="stat"><span>Students</span><b>{{ students }}</b></div><div class="stat"><span>Clearance requested</span><b>{{ req }}</b></div><div class="stat good"><span>Fully cleared</span><b>{{ cleared }}</b></div>
+<div class="stat bad"><span>Awaiting Registrar release</span><b>{{ awaiting }}</b></div></div>
+<div class="grid"><div class="stat"><span>Assessed</span><b>₱{{ assessed }}</b></div><div class="stat good"><span>Collected</span><b>₱{{ collected }}</b></div><div class="stat bad"><span>Outstanding</span><b>₱{{ owing }}</b></div></div>
+<div class="card"><h2>By program · {{ term }}</h2><table><tr><th>Program</th><th>Requested</th><th>Cleared</th></tr>{% for p in prog %}<tr><td>{{ p.p }}</td><td>{{ p.req }}</td><td>{{ p.cleared }}</td></tr>
+{% empty %}<tr><td colspan="3" class="empty">No clearances requested yet.</td></tr>{% endfor %}</table></div>
+<div class="card"><h2>Where signatures are waiting</h2><p class="m small">Offices with the most pending signatures. These are the bottlenecks.</p><table><tr><th>Office</th><th>Pending</th></tr>{% for b in bottle %}<tr><td>{{ b.l }}</td><td><b>{{ b.n }}</b></td></tr>
+{% empty %}<tr><td colspan="2" class="empty"><big>🎉</big>Nothing pending.</td></tr>{% endfor %}</table></div>{% endblock %}

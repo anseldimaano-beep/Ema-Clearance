@@ -1,0 +1,57 @@
+program,year,semester,code,title
+BSCS,1,1,GE 1,Understanding the Self
+BSCS,1,1,GE 2,Readings in Philippine History
+BSCS,1,1,CC 101,Introduction to Computing
+BSCS,1,1,CC 102,Fundamentals of Programming
+BSCS,1,1,PRE-CAL,Pre-Calculus for Non-STEM
+BSCS,1,1,PD 101,System Fundamentals
+BSCS,1,1,P.E. 1,Physical Fitness and Conditioning
+BSCS,1,1,NSTP 1,National Service Training Program
+BSCS,1,2,GE 3,
+BSCS,1,2,GE 4,
+BSCS,1,2,GE 5,
+BSCS,1,2,DS 101,
+BSCS,1,2,CC 103,
+BSCS,1,2,DCTM 101,
+BSCS,1,2,P.E. 2,
+BSCS,1,2,NSTP 2,
+BSCS,1,2,FILDIS,
+BSCS,2,1,GE 6,Art Appreciation
+BSCS,2,1,GE 7,Science Technology and Society
+BSCS,2,1,CC 104,Data Structure and Algorithms
+BSCS,2,1,DS 102,Discrete Structures 2
+BSCS,2,1,SDF 104,Object-Oriented Programming
+BSCS,2,1,ACCTG,Fundamentals of Accounting
+BSCS,2,1,QM,Quantitative Methods
+BSCS,2,1,DALUMAFIL,Dalumat ng/sa Filipino
+BSCS,2,1,P.E. 3,Fundamentals in Games and Sports
+BSCS,2,2,GE 8,
+BSCS,2,2,GE 9,
+BSCS,2,2,AL 101,
+BSCS,2,2,CC 105,
+BSCS,2,2,STAT 101,
+BSCS,2,2,WEB,
+BSCS,2,2,RES 1,
+BSCS,2,2,SOSLIT,
+BSCS,2,2,P.E. 4,
+BSCS,3,1,GE 10,The Entrepreneurial Mind
+BSCS,3,1,GE 11,Living in the IT Era
+BSCS,3,1,AL 102,Automata Theory and Formal Language
+BSCS,3,1,AR 101,Architecture and Organization
+BSCS,3,1,IAS 101,Information Assurance and Security
+BSCS,3,1,CC 106,Application Development and Emerging Technologies
+BSCS,3,1,THS 101,CS Thesis Writing 1
+BSCS,3,2,GE 12,
+BSCS,3,2,FL 101,
+BSCS,3,2,SE 101,
+BSCS,3,2,SP 101,
+BSCS,3,2,CN 101,
+BSCS,3,2,DGTL,
+BSCS,3,2,THS 102,
+BSCS,4,1,HCI 101,Human Computer Interaction
+BSCS,4,1,OS 101,Operating Systems
+BSCS,4,1,SE 102,Software Engineering 2
+BSCS,4,1,GV 101,Graphics and Visual Computing
+BSCS,4,1,NC 101,Networks and Communications
+BSCS,4,1,CS NLP,Natural Language Processing
+BSCS,4,2,PRC 101,

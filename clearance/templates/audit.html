@@ -1,0 +1,6 @@
+{% extends "base.html" %}{% block content %}
+<div class="card"><h2>Audit log</h2><span class="m small">Who did what, and when. Newest first.</span>
+<form class="fb" method="get"><input name="q" value="{{ q }}" placeholder="Search student, subject, person, note" aria-label="Search"><select name="action" aria-label="Action"><option value="">All actions</option>{% for a in actions %}<option {% if a == action %}selected{% endif %}>{{ a }}</option>{% endfor %}</select><button class="btn">Filter</button><a class="btn no" href="{% url 'audit' %}">Clear</a></form>
+<div class="gw"><table><tr><th>When</th><th>Who</th><th>Action</th><th>Student</th><th>Item</th><th>Note</th></tr>
+{% for a in page %}<tr><td>{{ a.created|date:"M d, h:i A" }}</td><td>{{ a.user.display|default:"(removed)" }}</td><td><span class="chip">{{ a.action }}</span></td><td>{{ a.student_name }}</td><td>{{ a.target }}</td><td>{{ a.detail }}</td></tr>
+{% empty %}<tr><td colspan="6" class="empty">Nothing recorded yet.</td></tr>{% endfor %}</table></div>{% include "_pager.html" %}</div>{% endblock %}

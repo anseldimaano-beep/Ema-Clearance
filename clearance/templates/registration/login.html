@@ -1,0 +1,5 @@
+{% extends "base.html" %}{% load static %}{% block content %}
+<div class="card login"><img src="{% static 'clearance/logo.png' %}" alt=""><h1>Welcome back</h1><p class="m">Sign in to manage your clearance. No more queues at the Registrar.</p>
+<form method="post">{% csrf_token %}{{ form.non_field_errors }}
+<label class="f">Username{{ form.username }}</label><br><label class="f">Password{{ form.password }}</label><br>
+<button class="btn lg" style="width:100%;justify-content:center">Sign in</button></form><p class="small m" style="text-align:center;margin-top:14px">New student or teacher? <a href="{% url 'signup' %}"><b>Create an account</b></a><br>Just signed up? The Registrar must approve it first.<br>Forgot your password? Ask the Registrar to reset it.</p></div>{% endblock %}

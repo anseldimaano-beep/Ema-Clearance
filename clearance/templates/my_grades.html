@@ -1,0 +1,6 @@
+{% extends "base.html" %}{% block content %}
+<div class="card"><h2>📊 My requirements</h2><p class="m">Projects, activities, quizzes and other requirements your teachers have not received yet. Submit them to your teacher so your clearance can be signed.</p></div>
+{% for c in cards %}<div class="card"><div class="row" style="justify-content:space-between;align-items:center"><div><h3>{{ c.subject }}</h3><span class="m small">Teacher: {{ c.teacher.display }} · updated {{ c.updated|date:"M d, h:i A" }}</span></div>
+{% if c.missing %}<span class="chip rejected">{{ c.missing|length }} missing</span>{% else %}<span class="chip approved">Complete</span>{% endif %}</div>
+{% if c.missing %}<ul>{% for m in c.missing %}<li>{{ m }}</li>{% endfor %}</ul>{% endif %}</div>
+{% empty %}<div class="card empty"><big>📚</big>{% if term %}None of your teachers has started a gradebook yet.{% else %}No active clearance period.{% endif %}</div>{% endfor %}{% endblock %}

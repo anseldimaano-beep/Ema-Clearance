@@ -1,0 +1,16 @@
+{% extends "base.html" %}{% block content %}
+{% if cred %}<div class="card" style="border:2px solid var(--ok)"><h3>✅ Save these login details now. The password is shown only once.</h3>
+<p><b>{{ cred.name }}</b><br>Username: <code>{{ cred.username }}</code><br>Password: <code style="font-size:20px">{{ cred.password }}</code></p><p class="m small">Ask them to change it from the Password link after the first login.</p></div>{% endif %}
+<div class="card"><h2>Create an account</h2><form method="post">{% csrf_token %}<input type="hidden" name="action" value="create"><div class="row">
+<label class="f">Role<select name="role">{% for k, v in roles %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select></label>
+<label class="f">Last name<input name="last_name" required></label><label class="f">First name<input name="first_name" required></label>
+<label class="f">Username<input name="username" placeholder="students: student no."></label><label class="f">Email<input type="email" name="email"></label></div><br>
+<div class="row"><label class="f">Office (Signing Office)<select name="office"><option value="">—</option>{% for k, v in offices %}<option value="{{ k }}">{{ v }}</option>{% endfor %}</select></label>
+<label class="f">Scope (e.g. BSCS)<input name="scope" size="8"></label><label class="f">Student no.<input name="student_no" size="10"></label>
+<label class="f">Program<select name="program"><option value="">—</option>{% for p, n in programs %}<option>{{ p }}</option>{% endfor %}</select></label><label class="f">Class<input name="grade_level" size="12" placeholder="Year 1 - A"></label>
+<button class="btn ok">Create account</button></div></form>
+<div class="tip">A random password is generated and shown once. Department Heads need Office = Department Head and Scope = their program. The Pre-Service Director needs Scope = BEED.</div></div>
+<div class="card"><h2>Accounts</h2><form class="row" method="get" style="margin-bottom:10px"><input name="q" value="{{ q }}" placeholder="🔍 Name or username" style="flex:1;min-width:180px"><select name="role"><option value="">Staff only</option>{% for k, v in roles %}<option value="{{ k }}" {% if k == rf %}selected{% endif %}>{{ v }}</option>{% endfor %}</select><button class="btn">Filter</button></form>
+<table><tr><th>Name</th><th>Username</th><th>Role</th><th></th></tr>{% for u in rows %}<tr><td>{{ u.last_name }}, {{ u.first_name }}{% if not u.is_active %} <span class="chip rejected">Deactivated</span>{% endif %}</td><td>{{ u.username }}</td><td>{{ u.title }}</td>
+<td><form class="row" method="post" style="justify-content:flex-end">{% csrf_token %}<input type="hidden" name="id" value="{{ u.pk }}"><button class="btn sm" name="action" value="reset" onclick="return confirm('Generate a new password for {{ u.username|escapejs }}?')">Reset password</button><button class="btn sm no" name="action" value="toggle">{% if u.is_active %}Deactivate{% else %}Activate{% endif %}</button></form></td></tr>
+{% empty %}<tr><td colspan="4" class="empty">No accounts found.</td></tr>{% endfor %}</table></div>{% endblock %}

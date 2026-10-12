@@ -1,0 +1,28 @@
+{% extends "base.html" %}{% block content %}
+<div class="card login" style="max-width:480px"><h1>Create your account</h1><p class="m" id="sub">The Registrar approves new accounts before you can sign in.</p>
+<form method="post" autocomplete="off">{% csrf_token %}
+<div class="row" style="margin-bottom:14px"><label class="f" style="flex:1">I am a
+<select name="role" id="role"><option value="student" {% if d.role != "teacher" %}selected{% endif %}>Student</option><option value="teacher" {% if d.role == "teacher" %}selected{% endif %}>Teacher</option></select></label></div>
+<div class="row"><label class="f" style="flex:1">Last name<input name="last_name" value="{{ d.last_name }}" required autocomplete="off"></label><label class="f" style="flex:1">First name &amp; M.I.<input name="first_name" value="{{ d.first_name }}" required autocomplete="off"></label></div><br>
+<div id="stu">
+<div class="row"><label class="f" style="flex:1">Student number<input name="student_no" value="{{ d.student_no }}" placeholder="e.g. 250100" autocomplete="off"></label>
+<label class="f" style="flex:1">Program<select name="program"><option value="">Choose…</option>{% for p, n in programs %}<option {% if d.program == p %}selected{% endif %}>{{ p }}</option>{% endfor %}</select></label></div><br>
+<label class="f">Year &amp; section<input name="grade_level" value="{{ d.grade_level }}" placeholder="e.g. Year 1 - A" autocomplete="off"></label><br>
+<p class="small m" style="margin-top:-6px">Use your student number from your Student ID.</p>
+</div>
+<div id="tch" hidden>
+<label class="f">Username<input name="username" value="{{ d.username }}" placeholder="e.g. your surname" autocomplete="off"></label><br>
+<label class="f">Subject(s) you teach (optional)<input name="position" value="{{ d.position }}" maxlength="80" placeholder="e.g. CC 102, SDF 104" autocomplete="off"></label><br>
+<p class="small m" style="margin-top:-6px">Your account works right away. If the school already made one for you, ask the Registrar for its password.</p>
+</div>
+<label class="f">Email (optional)<input type="email" name="email" value="{{ d.email }}" autocomplete="off"></label><br>
+<label class="f">Password (8+ characters)<input type="password" name="password1" required autocomplete="new-password"></label><br><label class="f">Confirm password<input type="password" name="password2" required autocomplete="new-password"></label><br>
+<button class="btn lg" style="width:100%;justify-content:center">Send account request</button></form><p class="small m" style="text-align:center;margin-top:12px"><a href="{% url 'login' %}">← Back to sign in</a></p></div>
+<script>
+(function(){var r=document.getElementById('role'),s=document.getElementById('stu'),t=document.getElementById('tch');
+function sync(){var te=r.value==='teacher';s.hidden=te;t.hidden=!te;
+s.querySelectorAll('input,select').forEach(function(e){e.disabled=te;e.required=!te&&e.name!=='';});
+t.querySelectorAll('input').forEach(function(e){e.disabled=!te;e.required=te&&e.name==='username';});
+document.getElementById('sub').textContent=te?'For teachers. Your account is ready right away.':'For students. The Registrar approves new accounts before you can sign in.';}
+r.addEventListener('change',sync);sync();})();
+</script>{% endblock %}

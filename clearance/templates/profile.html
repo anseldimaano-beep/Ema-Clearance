@@ -1,0 +1,6 @@
+{% extends "base.html" %}{% block content %}
+<div class="card login" style="max-width:460px;text-align:left"><h2>My contact details</h2><p class="m small">Used for alerts when something needs your attention.{% if user.role == 'student' %} You'll be told when your clearance is released, returned, rejected, ready for payment, or cleared.{% endif %}</p>
+<form method="post">{% csrf_token %}<label class="f">Email<input type="email" name="email" value="{{ user.email }}" autocomplete="email"></label><br>
+<label class="f">Mobile number (SMS)<input name="phone" value="{{ user.phone }}" inputmode="tel" placeholder="09171234567" autocomplete="tel"></label>
+<p class="small m">{% if sms_on %}SMS alerts are on for this school.{% else %}SMS alerts are not switched on yet; the Admin must set an SMS key. Your number is saved for when they are.{% endif %}</p>
+<button class="btn lg" style="width:100%;justify-content:center">Save</button></form></div>{% endblock %}

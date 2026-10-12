@@ -1,0 +1,41 @@
+{% extends "base.html" %}{% load clr %}{% block content %}
+{% if not term %}<div class="card empty"><big>🗓️</big><h2>No active term yet</h2><p>The Registrar has not opened a clearance period. Please check back soon.</p></div>
+{% elif not c %}<section class="hero"><p class="eyebrow">{{ term }}</p><h1>{% tr "Ready for your exam clearance?" %}</h1>
+<p>{% tr "Tick your subjects and send. You may also attach your Student ID (front and back) and Registration Card (student's copy), but they are optional." %}</p>
+{% include "_request_form.html" %}</section>
+{% else %}
+<section class="hero {% if c.status == 'cleared' %}done{% endif %}"><p class="eyebrow">{{ term }}</p>
+<h1>{% if c.status == 'cleared' %}{% tr "You're cleared!" %} 🎉{% elif c.status == 'requested' %}{% tr "Request sent" %} 📨{% elif c.status == 'returned' %}{% tr "Returned by the Registrar" %}{% else %}{% tr "Your clearance" %}{% endif %}</h1>
+<ol class="stages" aria-label="Progress">{% for n, s in stages %}<li class="{{ s }}"><i>{% if s == 'done' %}✓{% else %}{{ forloop.counter }}{% endif %}</i><span>{% if n == 'Signatures' %}{% tr "Signatures" %}{% else %}{% tr n %}{% endif %}</span></li>{% endfor %}</ol>
+<div class="next"><b>{% tr "What to do next" %}</b><div>{{ next_step }}</div></div>
+{% if c.status == 'returned' %}{% include "_request_form.html" with label="Request again" %}
+{% elif c.status == 'pending' %}<p><b>{{ c.done }} {% tr "of" %} {{ c.total }}</b> {% tr "signatures complete" %}</p><div class="bar"><i style="width:{{ c.percent }}%"></i></div>{% endif %}
+{% if c.status == 'cleared' %}<a class="btn y lg" href="{% url 'print' c.pk %}" target="_blank">🖨️ {% tr "Print my clearance" %}</a>{% endif %}</section>
+<div id="sync" class="sync" hidden><button type="button" class="btn y" onclick="location.reload()">🔄 {% tr "Something changed. Tap to refresh." %}</button></div>
+{% if c.docs_wanted and c.status != 'cleared' %}<div class="card" id="docs"><h3>📎 The Registrar asked for your documents</h3>{% if c.docs_note %}<p>💬 {{ c.docs_note }}</p>{% endif %}
+<form method="post" action="{% url 'student_docs' %}" enctype="multipart/form-data">{% csrf_token %}<div class="row">{% for k, lbl in c.wanted_docs %}<label class="f">{{ lbl }} (photo or PDF)<input type="file" name="{{ k }}_file" accept="image/*,.pdf" required></label>{% endfor %}</div>
+<button class="btn lg" data-busy="{% tr 'Uploading…' %}">Send to the Registrar</button><p class="small m">Photo or PDF, up to {{ MAX_UPLOAD_MB }} MB each. Only you and the Registrar can see them.</p></form></div>{% endif %}
+{% if c.rejected %}<div class="alert"><b>Action needed:</b> {% for i in c.rejected %}{{ i.label }}{% if i.remarks %} — "{{ i.remarks }}"{% endif %}{% if not forloop.last %}; {% endif %}{% endfor %}. Please see the signatory.</div>{% endif %}
+{% if not user.program %}<div class="tip">ℹ️ Your program is not set yet, so your Department Head signature will be added once the Registrar sets it.</div><br>{% endif %}
+<div class="grid"><div class="stat"><span>{% tr "Assessed" %}</span><b>₱{{ c.assessed }}</b></div><div class="stat good"><span>{% tr "Paid" %}</span><b>₱{{ c.paid }}</b></div>
+<div class="stat {% if c.balance > 0 %}bad{% else %}good{% endif %}"><span>{% tr "Balance" %}</span><b>₱{{ c.balance }}</b></div></div>
+{% if c.balance > 0 %}<div class="card"><h3>{% tr "Payment progress" %} · {{ c.pay_percent }}%</h3><div class="bar"><i style="width:{{ c.pay_percent }}%"></i></div>
+<div class="tip">💡 Installments are fine. Pay at the Cashier. The Cashier signs last, once every other signature is in and your balance is ₱0.</div></div>{% endif %}
+{% if c.id_file or c.idback_file or c.copy_file %}<div class="card"><h3>{% tr "Submitted documents" %}</h3>{% for k, lbl, has in c.doc_options %}{% if has %}<a href="{% url 'doc' c.pk k %}" target="_blank">📄 {{ lbl }}</a>{% if not forloop.last %} &nbsp;·&nbsp; {% endif %}{% endif %}{% endfor %}</div>{% endif %}
+{% if c.status == 'pending' %}<div class="card"><details><summary style="cursor:pointer"><b>➕ {% tr "Add a subject" %}</b> <span class="small m">{% tr "(irregular / transferee / missing subject)" %}</span></summary>
+<form class="row" method="post" action="{% url 'student_add_subject' %}" style="margin-top:8px">{% csrf_token %}
+{% if c.addable_subjects %}<select name="code" aria-label="Subject"><option value="">{% tr "Choose from your program…" %}</option>{% for s in c.addable_subjects %}<option value="{{ s.code }}">{{ s.code }}{% if s.title %} · {{ s.title }}{% endif %} (Year {{ s.year }}, Sem {{ s.semester }})</option>{% endfor %}</select>{% endif %}
+<input name="extra" placeholder="{% tr 'or type a subject code' %}" maxlength="40" aria-label="Subject code"><button class="btn y">{% tr "Add" %}</button></form>
+<p class="small m">{% tr "The subject goes to its teacher for signature. If no teacher is assigned yet, the Registrar assigns one." %}</p></details></div>{% endif %}
+<div class="card"><h2>{% tr "Signatures" %}</h2><ul class="steps">{% for i in c.items.all %}
+<li class="step"><span class="dot {{ i.status }}">{% if i.status == 'approved' %}✓{% elif i.status == 'rejected' %}✕{% else %}⏳{% endif %}</span>
+<div class="body"><b>{{ i.label }}{% if i.subject_title %} · {{ i.subject_title }}{% endif %}</b>{% if i.teacher_line %}<span class="small">👤 {% if i.signatory %}{% tr "Teacher" %}: {{ i.signatory.display }}{% else %}{% tr "Teacher" %}: {% tr "not assigned yet" %}{% endif %}</span>{% endif %}<span class="m small">{% if i.signed_by %}{% tr "Signed by" %} {{ i.signed_by.display }} · {{ i.signed_at|date:"M d, Y h:i A" }}{% elif c.status == 'requested' or c.status == 'returned' %}{% tr "Will be sent after the Registrar releases it" %}{% else %}{% tr "Waiting for signature" %}{% endif %}</span>
+{% if i.remarks %}<div class="small">💬 {{ i.remarks }}</div>{% endif %}{% if i.grade_issues and i.status != 'approved' %}<div class="hint small">📊 Grade issues to settle with your teacher: {% for g in i.grade_issues %}{{ g.short }}{% if not forloop.last %}, {% endif %}{% endfor %}</div>{% endif %}
+{% if i.extra and i.status != 'approved' and c.status != 'cleared' %}<form method="post" action="{% url 'remove_item' i.pk %}" style="margin-top:4px" onsubmit="return confirm('Remove {{ i.label|escapejs }}?')">{% csrf_token %}<button class="x" type="submit">✕ {% tr "Remove" %}</button></form>{% endif %}</div>
+{% if c.status == 'requested' or c.status == 'returned' %}<span class="chip">{% tr "Not released" %}</span>{% else %}<span class="chip {{ i.status }}">{% if i.status == 'pending' %}{% tr "Waiting" %}{% elif i.status == 'approved' %}{% tr "Approved" %}{% else %}{% tr "Rejected" %}{% endif %}</span>{% endif %}</li>{% endfor %}</ul></div>
+<div class="card"><h2>{% tr "Payment history" %}</h2><table><tr><th>{% tr "Date" %}</th><th>{% tr "Amount" %}</th><th>{% tr "Reference" %}</th></tr>
+{% for p in c.payments.all %}<tr><td>{{ p.paid_at|date:"M d, Y" }}</td><td>₱{{ p.amount }}</td><td>{{ p.reference|default:"—" }}</td></tr>
+{% empty %}<tr><td colspan="3" class="empty">{% tr "No payments recorded yet." %}</td></tr>{% endfor %}</table></div>
+{% if c.status != 'cleared' and c.status != 'returned' %}<script>(function(){var v0=null;function poll(){fetch("{% url 'student_status' %}",{credentials:"same-origin"}).then(function(r){return r.json()}).then(function(j){if(v0===null)v0=j.v;else if(j.v!==v0)document.getElementById("sync").hidden=false}).catch(function(){})}
+poll();setInterval(function(){if(!document.hidden)poll()},30000)})()</script>{% endif %}
+{% endif %}{% endblock %}

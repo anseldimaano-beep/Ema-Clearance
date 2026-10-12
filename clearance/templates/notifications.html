@@ -1,0 +1,3 @@
+{% extends "base.html" %}{% block content %}<div class="card"><h2>🔔 Notifications</h2>
+{% for n in notes %}<div class="item"><div class="who2"><a href="{{ n.url }}"><b>{{ n.text }}</b></a><div class="m small">{{ n.created|date:"M d, h:i A" }}</div></div></div>
+{% empty %}<div class="empty"><big>🔕</big>Nothing yet.</div>{% endfor %}</div>{% endblock %}

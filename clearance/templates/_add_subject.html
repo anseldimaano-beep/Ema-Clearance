@@ -1,0 +1,4 @@
+{% if c.status == 'pending' and c.addable_subjects %}<details style="margin-top:8px"><summary class="small" style="cursor:pointer">➕ Add a subject the student forgot to tick</summary>
+<form class="row" method="post" action="{% url 'add_subject' c.pk %}" style="margin-top:6px">{% csrf_token %}<input type="hidden" name="back" value="{{ back }}">
+<select name="code" required><option value="">Choose a subject…</option>{% for s in c.addable_subjects %}<option value="{{ s.code }}">{{ s.code }}{% if s.title %} · {{ s.title }}{% endif %} (Year {{ s.year }}, Sem {{ s.semester }})</option>{% endfor %}</select>
+<button class="btn y">Add to clearance</button></form></details>{% endif %}

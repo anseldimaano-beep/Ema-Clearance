@@ -1,0 +1,4 @@
+<details style="margin-top:8px"><summary class="small" style="cursor:pointer">📎 Ask the student for documents{% if c.docs_wanted %} <span class="chip">asked, waiting</span>{% endif %}</summary>
+<form class="row" method="post" action="{% url 'ask_docs' c.pk %}" style="margin-top:6px">{% csrf_token %}<input type="hidden" name="back" value="{{ back }}">
+{% for k, lbl, has in c.doc_options %}<label class="small"><input type="checkbox" name="docs" value="{{ k }}" {% if not has %}checked{% endif %} style="min-height:0"> {{ lbl }}{% if has %} (ask again){% endif %}</label>{% endfor %}
+<input name="note" maxlength="100" placeholder="Note to the student (optional)"><button class="btn y">Send request</button></form></details>

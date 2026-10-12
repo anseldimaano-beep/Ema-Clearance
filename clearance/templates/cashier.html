@@ -1,0 +1,14 @@
+{% extends "base.html" %}{% block content %}
+<div class="grid"><div class="stat"><span>Students</span><b>{{ st.total }}</b></div><div class="stat good"><span>Fully settled</span><b>{{ st.settled }}</b></div>
+<div class="stat bad"><span>With balance</span><b>{{ st.owing }}</b></div><div class="stat"><span>Collected</span><b>₱{{ st.collected }}</b></div></div>
+<div class="card"><div class="row" style="justify-content:space-between"><h2>Payments · {{ term }}</h2><a class="btn y" href="{% url 'inbox' %}">Signing inbox →</a></div>
+<form class="row" method="get" style="margin:12px 0"><input name="q" value="{{ q }}" placeholder="🔍 Search name or student no." style="flex:1;min-width:200px"><button class="btn">Search</button></form>
+{% for c in rows %}<div class="item"><span class="av">{{ c.student.display|slice:":1"|upper }}</span>
+<div class="who2"><b>{{ c.student.display }}</b> <span class="chip {% if c.balance == 0 and c.assessed %}approved{% endif %}">{% if c.balance == 0 and c.assessed %}Settled{% else %}Balance ₱{{ c.balance }}{% endif %}</span>
+<div class="m small">{{ c.student.student_no }} · Assessed ₱{{ c.assessed }} · Paid ₱{{ c.paid }}</div><div class="bar" style="margin-top:6px;max-width:260px"><i style="width:{{ c.pay_percent }}%"></i></div></div>
+{% if user.role == 'cashier' %}<form class="row" method="post">{% csrf_token %}<input type="hidden" name="cid" value="{{ c.pk }}"><input type="hidden" name="do" value="assess">
+<label class="f">Set assessment<input name="amount" size="8" inputmode="decimal" placeholder="₱" required></label><button class="btn">Set</button></form>
+<form class="row" method="post">{% csrf_token %}<input type="hidden" name="cid" value="{{ c.pk }}"><label class="f">Payment<input name="amount" size="8" inputmode="decimal" placeholder="₱" required></label>
+<label class="f">OR no.<input name="reference" size="9"></label><label class="f">Method<select name="method"><option>cash</option><option>gcash</option><option>bank</option></select></label><button class="btn ok">Add payment</button></form></div>
+{% endif %}</div>
+{% empty %}<div class="empty"><big>🔍</big>No clearances found.</div>{% endfor %}</div>{% endblock %}

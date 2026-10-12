@@ -1,0 +1,49 @@
+{% extends "base.html" %}{% block content %}
+<div class="card"><div class="row" style="justify-content:space-between;align-items:center"><div><a href="{% url 'grades' %}" class="small">← All subjects</a><h2>{{ sh.subject }} gradebook</h2>
+<span id="st">✓ All changes save automatically</span></div>
+<div class="row"><div class="stat" style="padding:8px 14px"><span>Students with issues</span><b id="fl">{{ flagged }}</b></div>
+<a class="btn" href="{% url 'grade_export' sh.pk %}">⬇ Gradebook (Excel)</a><a class="btn y" href="{% url 'grade_missing' sh.pk %}">⬇ Missing work (Excel)</a></div></div>
+<p class="m small">Type a score and press <b>Enter</b> (moves down) or <b>Tab</b>. Red = missing, invalid or higher than max. Pick a <b>category</b> under each activity (Quiz, Activity, Project, Recitation / Attendance, Exam) so the standing follows your grading system. The Excel file has the same layout, so you can fill it offline and import it back.</p></div>
+
+<div class="card"><form id="nf" method="post" action="{% url 'grade_notify' sh.pk %}">{% csrf_token %}</form>
+<div class="row" style="align-items:flex-end"><label class="f">Message to students (optional, e.g. a deadline)<input name="note" form="nf" maxlength="60" placeholder="e.g. Submit by Friday" style="min-width:260px"></label>
+<button id="nall" class="btn ok" form="nf" type="submit" {% if not missing_students %}disabled{% endif %}>🔔 Notify <b>{{ missing_students }}</b> student{{ missing_students|pluralize }} with missing work</button></div>
+<p class="m small" style="margin-top:8px">Each student gets a bell notification (and an email if the account has one) listing exactly what is missing in {{ sh.subject }}. Only <b>missing</b> work is sent; invalid or over-max scores are for you to fix.
+{% if sh.notified_at %}Last notified: {{ sh.notified_at|date:"M d, h:i A" }}.{% endif %}</p></div>
+
+<details class="card"><summary><b>Grading system</b> <span class="m small">(weights per category, editable)</span></summary>
+<form method="post" action="{% url 'grade_weights' sh.pk %}" style="margin-top:12px">{% csrf_token %}
+<table><tr><th>Category</th><th>Weight %</th><th>Activities</th></tr>
+{% for r in wrows %}<tr><td>{{ r.label }}</td><td><input type="number" name="w_{{ r.key }}" min="0" max="100" step="any" value="{{ r.w|floatformat:'-1' }}" style="width:90px"></td><td>{{ r.n }}</td></tr>{% endfor %}</table>
+<p class="m small">Weights of the categories you actually use add up to <b>{{ wtotal|floatformat:'-1' }}%</b>. Anything that does not add to 100 is scaled automatically. A category with no activities is left out. "Other" is not counted by default.</p>
+<button class="btn">Save grading system</button></form></details>
+
+<div class="card"><div class="gw"><table class="g"><thead><tr><th>Student</th>
+{% for c in cols %}<th>{{ c.name }}<form method="post" action="{% url 'grade_col' sh.pk %}" style="display:inline" onsubmit="return confirm('Remove {{ c.name|escapejs }} and its scores?')">{% csrf_token %}<input type="hidden" name="action" value="delete"><input type="hidden" name="col" value="{{ c.pk }}"><button class="x" title="Remove activity">✕</button></form>
+<br><select class="cat" data-type="cat" data-c="{{ c.pk }}" aria-label="Category of {{ c.name }}">{% for k, l in cats %}<option value="{{ k }}"{% if c.category == k %} selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+<br><span class="m small">max</span> <input class="mx" type="number" step="any" min="0" data-type="max" data-c="{{ c.pk }}" value="{% if c.max_score is not None %}{{ c.max_score|floatformat:'-2' }}{% endif %}"></th>{% endfor %}<th title="Weighted average of the scores entered so far. Missing work is not counted.">Standing</th><th>Issues</th><th></th></tr></thead>
+<tbody>{% for r in rows %}<tr data-sid="{{ r.s.pk }}"><td><b>{{ r.s.display }}</b><div class="m small">{{ r.s.student_no }}</div></td>
+{% for x in r.cells %}<td><input class="sc{% if x.bad %} bad{% endif %}" type="number" step="any" min="0" inputmode="decimal" data-s="{{ r.s.pk }}" data-c="{{ x.c.pk }}" data-cn="{{ x.c.name }}" value="{% if x.v is not None %}{{ x.v|floatformat:'-2' }}{% endif %}"></td>{% endfor %}
+<td class="stand">{% if r.stand is not None %}{{ r.stand|floatformat:'-1' }}%{% else %}—{% endif %}</td>
+<td><span class="badge {% if not r.n %}zero{% endif %}">{{ r.n }}</span></td>
+<td><button class="nb btn y" form="nf" name="student" value="{{ r.s.pk }}" title="Notify {{ r.s.display }} about missing work" {% if not r.miss %}disabled{% endif %}>🔔</button></td></tr>
+{% empty %}<tr><td colspan="9" class="empty">No students in this class. Ask the Registrar to add Teacher Loads.</td></tr>{% endfor %}</tbody></table></div>
+<form class="row" method="post" action="{% url 'grade_col' sh.pk %}" style="margin-top:14px">{% csrf_token %}<input type="hidden" name="action" value="add">
+<label class="f">New activity<input name="name" placeholder="e.g. Quiz 3, Project 2" required></label>
+<label class="f">Category<select name="cat"><option value="">Auto (from the name)</option>{% for k, l in cats %}<option value="{{ k }}">{{ l }}</option>{% endfor %}</select></label>
+<label class="f">Max score<input name="max" type="number" step="any" min="1" style="width:90px"></label><button class="btn">+ Add activity</button></form></div>
+<script>(function(){var tok="{{ csrf_token }}",url="{% url 'grade_cell' sh.pk %}",st=document.getElementById("st"),ins=[].slice.call(document.querySelectorAll("input.sc,input.mx")),sels=[].slice.call(document.querySelectorAll("select.cat"));
+function paint(is,stand){var m={};is.forEach(function(i){m[i[0]+"|"+i[1]]=i[2]});
+ document.querySelectorAll("input.sc").forEach(function(x){var k=x.dataset.s+"|"+x.dataset.cn;x.classList.toggle("bad",!!m[k]);x.title=m[k]?m[k].replace("_"," "):""});
+ var n=0,nm=0;document.querySelectorAll("tbody tr[data-sid]").forEach(function(tr){var c=0,mi=0;tr.querySelectorAll("input.sc").forEach(function(x){var k=m[x.dataset.s+"|"+x.dataset.cn];if(k){c++;if(k==="missing")mi++}});
+  var b=tr.querySelector(".badge");if(b){b.textContent=c;b.className="badge"+(c?"":" zero")}
+  var nb=tr.querySelector("button.nb");if(nb)nb.disabled=!mi;
+  var sd=tr.querySelector(".stand");if(sd&&stand){var v=stand[tr.dataset.sid];sd.textContent=(v===null||v===undefined)?"—":v+"%"}
+  if(c)n++;if(mi)nm++});
+ document.getElementById("fl").textContent=n;var na=document.getElementById("nall");if(na){na.disabled=!nm;na.querySelector("b").textContent=nm}}
+function save(x){st.textContent="Saving…";fetch(url,{method:"POST",headers:{"X-CSRFToken":tok,"Content-Type":"application/json"},body:JSON.stringify({type:x.dataset.type||"score",col:x.dataset.c,student:x.dataset.s,value:x.value})})
+ .then(function(r){return r.json().then(function(j){if(!r.ok)throw 0;return j})}).then(function(j){st.textContent="✓ Saved "+new Date().toLocaleTimeString([], {hour:"2-digit",minute:"2-digit",second:"2-digit"});paint(j.issues,j.standing)})
+ .catch(function(){st.textContent="⚠ Not saved. Check the value and your connection.";x.classList.add("bad")})}
+sels.forEach(function(x){x.addEventListener("change",function(){save(x)})});
+ins.forEach(function(x){x.addEventListener("change",function(){save(x)});x.addEventListener("keydown",function(e){if(e.key!=="Enter")return;e.preventDefault();x.blur();
+ var same=ins.filter(function(y){return y.dataset.c===x.dataset.c&&y.classList.contains("sc")}),i=same.indexOf(x);if(same[i+1])same[i+1].focus()})})})()</script>{% endblock %}

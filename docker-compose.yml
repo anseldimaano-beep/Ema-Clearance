@@ -1,0 +1,22 @@
+services:
+  web:
+    build: .
+    ports: ["8000:8000"]
+    restart: unless-stopped
+    environment:
+      DEBUG: "0"
+      DATABASE_URL: "${DATABASE_URL:-}"
+      SECRET_KEY: "${SECRET_KEY:-change-me}"
+      ALLOWED_HOSTS: "${ALLOWED_HOSTS:-*}"
+      REGISTRAR_USERNAME: "${REGISTRAR_USERNAME:-registrar}"
+      REGISTRAR_PASSWORD: "${REGISTRAR_PASSWORD:-change-me-now}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD:-change-me-too}"
+      REQUIRE_DEPT_HEAD: "${REQUIRE_DEPT_HEAD:-1}"
+      MAX_UPLOAD_MB: "25"
+      STUDENTS_CSV: /app/data/students.csv
+      OFFICES_NOT_FOR: "${OFFICES_NOT_FOR:-}"
+      SMS_API_KEY: "${SMS_API_KEY:-}"
+      SMS_SENDER: "${SMS_SENDER:-}"
+      REMIND_AFTER_DAYS: "${REMIND_AFTER_DAYS:-3}"
+    volumes: ["ema_data:/data"]
+volumes: {ema_data: {}}
