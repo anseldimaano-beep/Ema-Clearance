@@ -66,7 +66,7 @@ def import_students(rows):
 
 
 def save_creds(creds):
-    p = creds_path(); new = not p.exists()
+    p = creds_path(); p.parent.mkdir(parents=True, exist_ok=True); new = not p.exists()
     with open(p, "a", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         if new:
