@@ -18,7 +18,7 @@ from django.db.models import Count
 from django.urls import reverse_lazy
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
-from .students import assign_load, creds_path, import_students, newpw, parse_csv, save_creds
+from .students import assign_load, class_students, creds_path, find_teacher, import_students, newpw, parse_csv, parse_loads, save_creds, set_load
 from .notify import audit, norm_phone, push, release
 from .i18n import T
 from .backup import maybe_backup, maybe_remind, temp_snapshot
@@ -1202,3 +1202,137 @@ def notifications(request):
     notes = list(request.user.notes.all()[:60])
     request.user.notes.filter(read=False).update(read=True)
     return render(request, "notifications.html", {"notes": notes})
+
+
+@role_required("registrar", "admin")
+def loads(request):
+    """Who teaches which subject to which class. Change it here every semester (one row, or upload a whole schedule)."""
+    from .models import Clearance, ClearanceItem, TeacherLoad
+    if request.method == "POST":
+        a = request.POST.get("action")
+        if a == "set":
+            cls, subj = request.POST.get("group", ""), " ".join(request.POST.get("subject", "").split())[:80]
+            tid = request.POST.get("teacher", "")
+            t = User.objects.filter(pk=tid, role="teacher").first() if tid else None
+            subj = CurriculumSubject.objects.filter(code__iexact=subj).values_list("code", flat=True).first() or subj
+            if not (cls and subj) or (tid and not t):
+                messages.error(request, "Choose a class, a subject and a teacher.")
+            else:
+                n = set_load(cls, subj, t)
+                if n is None:
+                    messages.error(request, f"No students found in {cls}.")
+                else:
+                    for c in Clearance.objects.filter(term__is_active=True, student__in=[s.pk for s in class_students(cls)]):
+                        c.sync()
+                    audit(request.user, "teacher_load", None, f"{cls} / {subj}", f"{t.display if t else 'removed'} ({n} students)")
+                    messages.success(request, f"{cls} · {subj}: {t.display if t else 'teacher removed'} ({n} student(s) updated).")
+        elif a == "upload":
+            f = request.FILES.get("file")
+            if not f or not f.name.lower().endswith((".csv", ".xlsx")) or f.size > 2_000_000:
+                messages.error(request, "Choose a .csv or .xlsx file (max 2 MB).")
+            else:
+                try:
+                    rows = parse_loads(f.read(), f.name)
+                except Exception as e:
+                    messages.error(request, f"Could not read the file: {e}")
+                else:
+                    if request.POST.get("replace"):
+                        TeacherLoad.objects.all().delete()
+                        ClearanceItem.objects.filter(kind="teacher").exclude(status="approved").update(signatory=None)
+                    done, skipped = 0, []
+                    for cls, code, who in rows:
+                        code = " ".join(code.split())[:80]
+                        if not (cls and code):
+                            continue
+                        code = CurriculumSubject.objects.filter(code__iexact=code).values_list("code", flat=True).first() or code
+                        if not who:
+                            skipped.append(f"{cls} / {code}: no teacher on the schedule"); continue
+                        t = find_teacher(who)
+                        if not t:
+                            skipped.append(f"{cls} / {code}: no teacher account for {who}"); continue
+                        if set_load(cls, code, t) is None:
+                            skipped.append(f"{cls} / {code}: no students in {cls}"); continue
+                        done += 1
+                    for c in Clearance.objects.filter(term__is_active=True):
+                        c.sync()
+                    audit(request.user, "teacher_load", None, "upload", f"{done} rows applied, {len(skipped)} skipped")
+                    messages.success(request, f"Applied {done} subject assignment(s)." + (f" Skipped {len(skipped)}: " + "; ".join(skipped[:8]) + (" …" if len(skipped) > 8 else "") if skipped else ""))
+        return redirect("loads")
+    rows = list(TeacherLoad.objects.values("student__grade_level", "subject", "teacher_id", "teacher__first_name", "teacher__last_name")
+                .annotate(n=Count("id")).order_by("student__grade_level", "subject"))
+    for r in rows:
+        r["group"] = r["student__grade_level"]
+    return render(request, "loads.html", {"rows": rows, "teachers": User.objects.filter(role="teacher").order_by("last_name"),
+        "groups": list(User.objects.filter(role="student").values_list("grade_level", flat=True).distinct().order_by("grade_level")),
+        "codes": CurriculumSubject.objects.order_by("id").values_list("code", flat=True).distinct()})
+
+
+@role_required("registrar", "admin")
+def loads_export(request):
+    from .models import TeacherLoad
+    r = HttpResponse(content_type="text/csv")
+    r["Content-Disposition"] = 'attachment; filename="teacher_loads.csv"'
+    w = csv.writer(r); w.writerow(["class", "code", "teacher"])
+    for x in TeacherLoad.objects.values("student__grade_level", "subject", "teacher__last_name").annotate(n=Count("id")).order_by("student__grade_level", "subject"):
+        w.writerow([x["student__grade_level"], x["subject"], x["teacher__last_name"]])
+    return r
+
+
+@role_required("teacher")
+def my_subjects(request):
+    """A teacher picks the subjects they teach (course no. + descriptive title) for each class. BSCS only for now."""
+    from .models import Clearance, TeacherLoad
+    u = request.user
+    term = Term.objects.filter(is_active=True).first()
+    sem = int(term.semester) if term and term.semester else 1
+    pool = list(CurriculumSubject.objects.filter(program="BSCS", semester=sem))
+    by_code = {s.code: s for s in CurriculumSubject.objects.filter(program="BSCS")}
+    groups = [g for g in User.objects.filter(role="student").values_list("grade_level", flat=True).distinct().order_by("grade_level") if g]
+
+    def taught_by(cls, code):
+        ids = [s.pk for s in class_students(cls)]
+        return set(TeacherLoad.objects.filter(student_id__in=ids, subject__iexact=code).values_list("teacher_id", flat=True)), ids
+
+    if request.method == "POST":
+        a, cls, code = request.POST.get("action"), request.POST.get("group", "").strip(), request.POST.get("subject", "").strip()
+        subj = by_code.get(code)
+        if cls not in groups or not subj:
+            messages.error(request, "Choose a class and a subject from the list.")
+        else:
+            who, ids = taught_by(cls, code)
+            if not ids:
+                messages.error(request, f"No students found in {cls}.")
+            elif a == "add":
+                m = re.search(r"(\d)", cls)
+                if m and int(m.group(1)) != subj.year:
+                    messages.error(request, f"{subj.code} is a Year {subj.year} subject, so it cannot be added to {cls}.")
+                elif who - {u.pk}:
+                    other = User.objects.filter(pk__in=who - {u.pk}).first()
+                    messages.error(request, f"{cls} · {subj.code} already has a teacher ({other.display}). Ask the Registrar to change it.")
+                elif who == {u.pk} and TeacherLoad.objects.filter(student_id__in=ids, subject__iexact=code).count() == len(ids):
+                    messages.info(request, f"{cls} · {subj.code} is already on your list.")
+                else:
+                    n = set_load(cls, subj.code, u)
+                    for c in Clearance.objects.filter(term__is_active=True, student__in=ids):
+                        c.sync()
+                    audit(u, "teacher_load", None, f"{cls} / {subj.code}", f"chosen by the teacher ({n} students)")
+                    messages.success(request, f"Added {subj.code} · {subj.title or ''} for {cls} ({n} student(s)).")
+            elif a == "remove":
+                if who and who != {u.pk}:
+                    messages.error(request, "You can only remove your own subjects.")
+                elif not who:
+                    messages.info(request, "That subject is not on your list.")
+                else:
+                    n = set_load(cls, subj.code, None)
+                    for c in Clearance.objects.filter(term__is_active=True, student__in=ids):
+                        c.sync()
+                    audit(u, "teacher_load", None, f"{cls} / {subj.code}", f"removed by the teacher ({n} students)")
+                    messages.success(request, f"Removed {subj.code} from {cls}. Signatures already given are kept.")
+        return redirect("my_subjects")
+    mine = list(TeacherLoad.objects.filter(teacher=u).values("student__grade_level", "subject").annotate(n=Count("id")).order_by("student__grade_level", "subject"))
+    for r in mine:
+        r["group"], r["title"] = r["student__grade_level"], (by_code[r["subject"]].title if r["subject"] in by_code else "")
+    years = {}
+    for s in pool:
+        years.setdefault(s.year, []).append(s)
+    return render(request, "my_subjects.html", {"mine": mine, "groups": groups, "years": sorted(years.items()), "sem": sem})
