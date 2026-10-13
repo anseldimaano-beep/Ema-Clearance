@@ -6,7 +6,7 @@
 <button id="mb" type="button" class="mb" aria-label="Menu" aria-expanded="false">☰ Menu</button><div class="links" id="lk">
 {% if user.is_authenticated %}
 <a href="{% url 'home' %}">Home</a><a href="{% url 'notifications' %}" title="Notifications">🔔{% if unread %} <b>{{ unread }}</b>{% endif %}</a>
-{% if user.role == 'teacher' %}<a href="{% url 'grades' %}">📊 Grades</a>{% endif %}
+{% if user.role == 'teacher' %}<a href="{% url 'my_subjects' %}">📚 My subjects</a><a href="{% url 'grades' %}">📊 Grades</a>{% endif %}
 {% if user.role == 'student' %}<a href="{% url 'my_grades' %}">📊 My requirements</a>{% endif %}
 {% if user.role == 'registrar' or user.role == 'admin' %}
 <details class="dd"><summary>Clearance{% if req_count %}<b class="badge">{{ req_count }}</b>{% endif %}</summary><div class="menu">

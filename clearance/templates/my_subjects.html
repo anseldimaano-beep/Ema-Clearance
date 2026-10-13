@@ -1,0 +1,14 @@
+{% extends "base.html" %}{% block content %}
+<div class="card"><h2>My subjects</h2><p class="m small">Subjects you teach, by class. Pick the course no. and descriptive title from the BSCS list below. Students in that class will then have you as the teacher who signs that subject. Only BSCS subjects are available for now.</p>
+<table style="margin-top:12px"><tr><th>Class</th><th>Course no.</th><th>Descriptive title</th><th>Students</th><th></th></tr>
+{% for r in mine %}<tr><td>{{ r.group }}</td><td><b>{{ r.subject }}</b></td><td>{{ r.title }}</td><td>{{ r.n }}</td>
+<td><form method="post" onsubmit="return confirm('Remove {{ r.subject }} from {{ r.group }}?')">{% csrf_token %}<input type="hidden" name="action" value="remove"><input type="hidden" name="group" value="{{ r.group }}"><input type="hidden" name="subject" value="{{ r.subject }}"><button class="btn sm no">Remove</button></form></td></tr>
+{% empty %}<tr><td colspan="5" class="empty"><big>📚</big>You have not picked any subject yet. Add one below.</td></tr>{% endfor %}</table></div>
+<div class="card"><h3>Add a subject</h3><p class="m small">Showing the BSCS subjects of semester {{ sem }}. If the class already has a teacher for a subject, ask the Registrar to change it.</p>
+<form class="row" method="post">{% csrf_token %}<input type="hidden" name="action" value="add">
+<label class="f">Class<select name="group" id="grp" required><option value="">— choose a class —</option>{% for g in groups %}<option value="{{ g }}">{{ g }}</option>{% endfor %}</select></label>
+<label class="f" style="flex:1;min-width:260px">Course no. and descriptive title<select name="subject" id="sub" required><option value="">— choose a subject —</option>
+{% for y, subs in years %}<optgroup label="Year {{ y }}" data-year="{{ y }}">{% for s in subs %}<option value="{{ s.code }}">{{ s.code }}{% if s.title %} — {{ s.title }}{% endif %}</option>{% endfor %}</optgroup>{% endfor %}</select></label>
+<button class="btn">Add</button></form></div>
+<script>(function(){var g=document.getElementById("grp"),s=document.getElementById("sub");function f(){var m=(g.value||"").match(/\d/),y=m?m[0]:"";s.querySelectorAll("optgroup").forEach(function(o){var show=!y||o.dataset.year===y;o.hidden=!show;o.disabled=!show});if(s.selectedOptions[0]&&s.selectedOptions[0].disabled)s.value=""}g.onchange=f;f()})()</script>
+{% endblock %}
