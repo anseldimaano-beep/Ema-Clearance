@@ -1,8 +1,8 @@
-import csv, io, re, secrets
+import csv, io, re, secrets, unicodedata
 from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
-from .models import TeacherLoad, User
+from .models import ClearanceItem, TeacherLoad, User
 
 ALPHA = "abcdefghjkmnpqrstuvwxyz23456789"
 NONE = {"", "—", "–", "-", "n/a", "none"}
@@ -80,3 +80,70 @@ def assign_load(teacher, subject, group):
         _, new = TeacherLoad.objects.get_or_create(student=s, teacher=teacher, subject=subject)
         n += new
     return n
+
+
+def name_key(s):
+    """'ENGR. MAJABA' -> 'majaba', 'Bañez' -> 'banez' (matches the teacher usernames)."""
+    s = " ".join(w for w in (s or "").split() if not w.endswith("."))
+    s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode()
+    return re.sub(r"[^a-z]", "", s.lower())
+
+
+def find_teacher(name):
+    k = name_key(name)
+    if not k:
+        return None
+    return User.objects.filter(role="teacher", username=k).first() or next(
+        (t for t in User.objects.filter(role="teacher") if name_key(t.last_name) == k), None)
+
+
+def class_students(cls):
+    """'Year 2' = every Year 2 student; 'Year 1 - A' = only section A."""
+    def parse(x):
+        y = re.search(r"(\d)", x or "")
+        sec = re.search(r"(?:^|[\s-])([A-Za-z])\s*$", re.sub(r"(?i)year", "", x or "").strip())
+        return (y.group(1) if y else "", sec.group(1).upper() if sec else "")
+    y, sec = parse(cls)
+    if not y:
+        return []
+    return [s for s in User.objects.filter(role="student") if parse(s.grade_level)[0] == y and (not sec or parse(s.grade_level)[1] == sec)]
+
+
+def set_load(cls, subject, teacher):
+    """Make `teacher` the teacher of `subject` for the class (None = remove the teacher). Returns how many students changed,
+    or None if the class has no students. Signed signatures are never touched; pending ones follow the new teacher."""
+    studs = class_students(cls)
+    if not studs:
+        return None
+    ids = [s.pk for s in studs]
+    q = TeacherLoad.objects.filter(student_id__in=ids, subject__iexact=subject)
+    if teacher is None:
+        n = q.count(); q.delete()
+    else:
+        have = set(q.values_list("student_id", flat=True))
+        n = q.exclude(teacher=teacher).count()
+        q.exclude(teacher=teacher).update(teacher=teacher)
+        TeacherLoad.objects.bulk_create([TeacherLoad(student_id=i, teacher=teacher, subject=subject) for i in ids if i not in have])
+        n += len(ids) - len(have)
+    ClearanceItem.objects.filter(clearance__student_id__in=ids, kind="teacher", label__iexact=subject).exclude(status="approved").update(signatory=teacher)
+    return n
+
+
+def parse_loads(raw, filename):
+    """Read class / code / teacher rows from a .csv or .xlsx upload. Returns a list of (class, code, teacher)."""
+    if filename.lower().endswith(".xlsx"):
+        import openpyxl
+        ws = openpyxl.load_workbook(io.BytesIO(raw), read_only=True, data_only=True).active
+        rows = [[("" if c is None else str(c)).strip() for c in r] for r in ws.iter_rows(values_only=True)]
+    else:
+        rows = [[c.strip() for c in r] for r in csv.reader(io.StringIO(raw.decode("utf-8-sig", errors="replace")))]
+    rows = [r for r in rows if any(r)]
+    if not rows:
+        return []
+    head = [h.lower() for h in rows[0]]
+    def col(*names):
+        return next((head.index(n) for n in names if n in head), None)
+    ci, cc, ct = col("class", "section", "group"), col("code", "course no.", "course", "subject"), col("teacher", "instructor")
+    if None in (ci, cc, ct):
+        raise ValueError("The first row must have the headers: class, code, teacher")
+    return [(r[ci] if ci < len(r) else "", r[cc] if cc < len(r) else "", r[ct] if ct < len(r) else "") for r in rows[1:]]
