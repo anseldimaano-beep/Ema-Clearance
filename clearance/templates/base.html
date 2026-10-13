@@ -4,18 +4,29 @@
 {% block head %}{% endblock %}<link rel="stylesheet" href="{% static 'clearance/app.css' %}"></head><body>
 <nav><img src="{% static 'clearance/logo.png' %}" alt="EMA EMITS College logo"><div class="brand"><b>EMA Clearance</b><small>EMA EMITS College Philippines</small></div>
 <button id="mb" type="button" class="mb" aria-label="Menu" aria-expanded="false">☰ Menu</button><div class="links" id="lk">
-{% if user.is_authenticated %}<span class="who">{{ user.display }} · {{ user.title }}</span><a href="{% url 'home' %}">Home</a><a href="{% url 'notifications' %}" title="Notifications">🔔{% if unread %} <b>{{ unread }}</b>{% endif %}</a><a href="{% url 'profile' %}">Profile</a><a href="{% url 'password_change' %}">Password</a>
+{% if user.is_authenticated %}
+<a href="{% url 'home' %}">Home</a><a href="{% url 'notifications' %}" title="Notifications">🔔{% if unread %} <b>{{ unread }}</b>{% endif %}</a>
 {% if user.role == 'teacher' %}<a href="{% url 'grades' %}">📊 Grades</a>{% endif %}
 {% if user.role == 'student' %}<a href="{% url 'my_grades' %}">📊 My requirements</a>{% endif %}
+{% if user.role == 'registrar' or user.role == 'admin' %}
+<details class="dd"><summary>Clearance{% if req_count %}<b class="badge">{{ req_count }}</b>{% endif %}</summary><div class="menu">
 {% if user.role == 'registrar' %}<a href="{% url 'requests' %}">Requests{% if req_count %} ({{ req_count }}){% endif %}</a><a href="{% url 'inbox' %}">Signing</a>{% endif %}
-{% if user.role == 'registrar' or user.role == 'admin' %}<a href="{% url 'clearances' %}">All clearances</a>{% endif %}
-{% if user.role == 'registrar' or user.role == 'admin' %}<a href="{% url 'students' %}">Students</a><a href="{% url 'accounts' %}">Accounts</a><a href="{% url 'terms' %}">Clearance period</a><a href="{% url 'cashier' %}">Payments</a>{% endif %}
-{% if user.role == 'registrar' or user.role == 'admin' or user.role == 'owner' or user.office == 'dean' and user.role == 'office' %}<a href="{% url 'overview' %}">Overview</a>{% endif %}
+<a href="{% url 'clearances' %}">All clearances</a><a href="{% url 'terms' %}">Clearance period</a></div></details>
+<details class="dd"><summary>People</summary><div class="menu"><a href="{% url 'students' %}">Students</a><a href="{% url 'loads' %}">Teacher loads</a><a href="{% url 'accounts' %}">Accounts</a></div></details>
+{% endif %}
+{% if user.role == 'registrar' or user.role == 'admin' or user.role == 'owner' or user.office == 'dean' and user.role == 'office' %}
+<details class="dd"><summary>Reports</summary><div class="menu"><a href="{% url 'overview' %}">Overview</a>
+{% if user.role == 'registrar' or user.role == 'admin' %}<a href="{% url 'cashier' %}">Payments</a>{% endif %}
 {% if user.role == 'registrar' or user.role == 'admin' or user.role == 'owner' %}<a href="{% url 'audit' %}">Audit log</a>{% endif %}
-{% if user.role == 'admin' %}{% if show_backup %}<a href="{% url 'backup' %}" title="Download a copy of the database">Backup</a>{% endif %}<a href="/admin/">Admin</a>{% endif %}
-{% if user.role == 'student' %}{% if lang == 'tl' %}<a href="{% url 'set_lang' 'en' %}">🌐 English</a>{% else %}<a href="{% url 'set_lang' 'tl' %}">🌐 Filipino</a>{% endif %}{% endif %}{% endif %}
+{% if user.role == 'admin' %}{% if show_backup %}<a href="{% url 'backup' %}" title="Download a copy of the database">Backup</a>{% endif %}<a href="/admin/">Admin site</a>{% endif %}</div></details>
+{% endif %}
+<details class="dd acct"><summary>{{ user.display }} · {{ user.title }}</summary><div class="menu">
+<a href="{% url 'profile' %}">Profile</a><a href="{% url 'password_change' %}">Password</a>
+{% if user.role == 'student' %}{% if lang == 'tl' %}<a href="{% url 'set_lang' 'en' %}">🌐 English</a>{% else %}<a href="{% url 'set_lang' 'tl' %}">🌐 Filipino</a>{% endif %}{% endif %}
 <button id="tg" type="button" title="Toggle light/dark mode" aria-label="Toggle light/dark mode"></button>
-{% if user.is_authenticated %}<form method="post" action="{% url 'logout' %}">{% csrf_token %}<button>Logout</button></form>{% endif %}</div></nav>
+<form method="post" action="{% url 'logout' %}">{% csrf_token %}<button>Logout</button></form></div></details>
+{% else %}<button id="tg" type="button" title="Toggle light/dark mode" aria-label="Toggle light/dark mode"></button>{% endif %}
+</div></nav>
 <div class="toasts">{% for m in messages %}<div class="toast {{ m.tags }}" role="status">{{ m }}</div>{% endfor %}</div>
 <main>{% block content %}{% endblock %}</main><footer>© EMA EMITS College Philippines · Pinamalayan, Oriental Mindoro</footer>
 <script>(function(){var d=document.documentElement,b=document.getElementById("tg");
@@ -23,5 +34,6 @@ function cur(){return d.dataset.theme||(matchMedia("(prefers-color-scheme: dark)
 function show(){b.textContent=cur()==="dark"?"\u2600\uFE0F Light":"\uD83C\uDF19 Dark"}
 b.onclick=function(){var n=cur()==="dark"?"light":"dark";d.dataset.theme=n;try{localStorage.setItem("theme",n)}catch(e){}show()};show();
 setTimeout(function(){document.querySelectorAll(".toast").forEach(function(t){t.style.display="none"})},5000);
+var dds=document.querySelectorAll("details.dd");dds.forEach(function(x){x.addEventListener("toggle",function(){if(x.open)dds.forEach(function(y){if(y!==x)y.open=false})})});document.addEventListener("click",function(e){dds.forEach(function(y){if(!y.contains(e.target))y.open=false})});
 var mb=document.getElementById("mb"),nv=document.querySelector("nav");mb.onclick=function(){var o=nv.classList.toggle("open");mb.setAttribute("aria-expanded",o)};
 document.querySelectorAll("form").forEach(function(f){f.addEventListener("submit",function(){f.querySelectorAll("button:not([formnovalidate])").forEach(function(x){if(x.dataset.busy)x.textContent=x.dataset.busy;setTimeout(function(){x.disabled=true},0)})})})})()</script></body></html>
